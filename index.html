@@ -89,6 +89,29 @@
 						<li v-if="filtersActive">
 							<button class="small max" @click="clearFilters">Clear filters</button>
 						</li>
+						<li style="flex-direction:column;gap:4px">
+							<span title="Parameters used for the Meshtastic site planner links of repeaters">Repeater coverage</span>
+							<div class="field label prefix fill small">
+								<i>height</i>
+								<input type="number" min="0" step="1" v-model.number="app.coverage.tx_height" placeholder=" ">
+								<label>Antenna height (m)</label>
+							</div>
+							<div class="field label prefix fill small">
+								<i>cell_tower</i>
+								<input type="number" min="0" step="0.5" v-model.number="app.coverage.tx_gain" placeholder=" ">
+								<label>Antenna gain (dBi)</label>
+							</div>
+							<div class="field label prefix fill small">
+								<i>bolt</i>
+								<input type="number" min="0" max="30" step="1" v-model.number="app.coverage.tx_power_dbm" placeholder=" ">
+								<label>TX power (dBm)</label>
+							</div>
+							<div class="field label prefix fill small">
+								<i>radar</i>
+								<input type="number" min="1" max="150" step="1" v-model.number="app.coverage.simulation_extent" placeholder=" ">
+								<label>Coverage radius (km)</label>
+							</div>
+						</li>
 					</menu>
 					<div class="field border no-margin">
 						<input type="text" class="background" list="nodes" v-model="app.search" placeholder="Search Nodes" v-if="app.nodes">

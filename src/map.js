@@ -1,7 +1,11 @@
 import { unpack } from 'https://cdn.jsdelivr.net/npm/msgpackr@1.11.8/+esm';
 import { createApp, reactive, ref, computed, watch, onMounted, markRaw, shallowRef } from '../lib/vue.esm-browser.js';
 import * as ntools from './node-utils.js';
+import { loadCoverageSettings, saveCoverageSettings, getSitePlannerUrl } from './site-planner.js';
 const apiUrl = 'https://map.meshcore.dev/api/v1/nodes?binary=1&short=1';
+
+// Settings used to build Meshtastic site planner links, kept in sync with the filter menu inputs
+const coverageSettings = loadCoverageSettings();
 
 function uint8ArrayToHex(uint8arr) {
 	const hexOctets = new Array(uint8arr.length);
@@ -79,7 +83,7 @@ const radioParamDesc = {
 	},
 };
 
-const columnOrder = ['adv_name', 'public_key', 'type', 'status', 'link', 'inserted_date', 'updated_date', 'coords', 'preset', 'params' ];
+const columnOrder = ['adv_name', 'public_key', 'type', 'status', 'link', 'inserted_date', 'updated_date', 'coords', 'preset', 'params', 'coverage' ];
 const columns = {
 	coords: {
 		label: 'Coordinates',
@@ -134,6 +138,13 @@ const columns = {
 		label: 'Meshcore link',
 		value: (uint8arr) => `<a href="javascript:navigator.clipboard.writeText('meshcore://${uint8arr.toHex()}')">Copy to clipboard</a>`
 	},
+	coverage: {
+		label: 'Coverage',
+		getValue: (node) => {
+			const url = getSitePlannerUrl(node, coverageSettings);
+			return url ? `<a href="${escape(url)}" target="_blank" rel="noopener">Meshtastic site planner</a>` : null;
+		}
+	},
 };
 
 function timeAgo(msec) {
@@ -185,9 +196,20 @@ function clearLocationHash () {
 }
 
 function getTable(node) {
-	return '<table class="node-info"><tbody>'+
-		'<tr>' + columnOrder.flatMap(key => node[key] ? [`<td><b>${columns[key].label}</b></td><td>${ columns[key].value ? columns[key].value(node[key]) : node[key] }</td>`] : [] ).join('</tr><tr>') + '</tr>'+
-	'</tbody></table>';
+	const cells = [];
+
+	for(const key of columnOrder) {
+		const column = columns[key];
+		const html = column.getValue
+			? column.getValue(node)
+			: node[key] ? (column.value ? column.value(node[key], node) : node[key]) : null;
+
+		if(html) {
+			cells.push(`<td><b>${column.label}</b></td><td>${html}</td>`);
+		}
+	}
+
+	return '<table class="node-info"><tbody><tr>'+ cells.join('</tr><tr>') +'</tr></tbody></table>';
 }
 
 function getNodePopupHTML(node) {
@@ -332,6 +354,7 @@ createApp({
 			presets,
 			presetIndex: 0,
 			loading: false,
+			coverage: coverageSettings,
 		});
 
 		// Keep large arrays outside Vue's deep reactivity
@@ -548,6 +571,12 @@ createApp({
 			app.urlParams.cluster = app.clusteringZoom;
 			refreshMap({ download: false, clusteringZoom: app.clusteringZoom });
 		});
+
+		watch(
+			() => app.coverage,
+			() => saveCoverageSettings(app.coverage),
+			{ deep: true }
+		);
 
 		const stats = computed(() => {
 			const nodes = app.nodes;
